@@ -532,6 +532,10 @@ subtle distoration due to our implementation flaw).
 
 [^3]: If this isn't obvious, pay attention to the dark green patch in the center of Africa. There is far more nuance in the Summed Area Table rendering compared with the others.
 
+### Webpage Link
+
+<https://cal-cs184-student.github.io/project-webpages-sp23-red-robby/proj1/index.html>
+
 
 
 
