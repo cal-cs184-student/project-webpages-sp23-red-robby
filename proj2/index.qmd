@@ -97,11 +97,11 @@ giving the final point on the Bezier curve.
 
 #### Showcase
 
-![The teapot (``teapot.dae``) from the side.](./img/t2-1.png)
+![The teapot (``teapot.dae``) from the side.](./img/t2_rg1.png)
 
-![The teapot from above.](./img/t2-2.png)
+![The teapot from above.](./img/t2_rg2.png)
 
-![The teapot from below.](./img/t2-3.png)
+![The teapot from below.](./img/t2_rg3.png)
 
 ## Section II: Triangle Meshes and Half-Edge Data Structure
 
