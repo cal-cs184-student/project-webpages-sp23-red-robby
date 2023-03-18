@@ -97,7 +97,7 @@ giving the final point on the Bezier curve.
 
 #### Showcase
 
-![The teapot (``teapot.dae``) from the side.](./img/t2_rg1.png)
+![The teapot from the side.](./img/t2_rg1.png)
 
 ![The teapot from above.](./img/t2_rg2.png)
 
