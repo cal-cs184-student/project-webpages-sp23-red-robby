@@ -6,9 +6,21 @@ author: "Isolde Fang, Jakob Sorensen"
 
 ## Overview
 
+
+
+In this project, we added features to support the rendering of more materials
+based on project 3-1. Specifically, our implementation can now support the
+rendering of the following materials: mirror, glass, and metals. For mirror, we
+used perfect specular reflection; for glass, we used refraction; for metal, we
+used the microfacet model.
+
+The implementation of this project is conceptually easy but the computation
+aspect is a little complicated and requires a great understanding of each of the
+formulas we need to use during the implementation. Overall, this project is
+extremely rewarding as the rendering results are much closer to reality compared
+to the other half of the project.
+
 ## Part 1: Mirror and Glass Materials
-
-
 
 Below we rendered the CBspheres.dae with 64 samples per pixel, 4 samples per light, and different levels of max_ray_depth.
 
@@ -115,3 +127,6 @@ we take 256 samples per pixel, 4 samples per light, and maintain a ray depth of 
 ![Zinc ($\eta = \{ 1.1181, 0.92678, 0.71515 \}$, $k = \{ 5.5577, 4.9657, 4.1696 \}$)](./img/dragon_material_zinc.png)
 
 ![Franckeite ($\eta = \{ 3.4982, 3.4147, 2.5670 \}$, $k = \{ 0.47698, 0.84051, 1.3236\}$)](./img/dragon_material_franckeite.png)
+
+Note the the first, Zinc, is a conductor material, while the latter is a
+sulfosalt which we tried for fun.
