@@ -130,3 +130,11 @@ we take 256 samples per pixel, 4 samples per light, and maintain a ray depth of 
 
 Note the the first, Zinc, is a conductor material, while the latter is a
 sulfosalt which we tried for fun.
+
+## Collaboration
+
+We each led a specific section, with Isolde leading the first part and Jakob
+leading the second. We communicated and planned over text, and pair programmed
+over Zoom. The project was less time consuming compared to the previous and went
+smoothly. The collaboration process was very similar to our past experiences, so
+we didn't learn anything further in this regard.
