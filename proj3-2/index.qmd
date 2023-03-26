@@ -1,0 +1,117 @@
+---
+title: "Project 3-2: Additional Features to PathTracer"
+subtitle: "CS 184: Computer Graphics and Imaging, Spring 2023"
+author: "Isolde Fang, Jakob Sorensen"
+---
+
+## Overview
+
+## Part 1: Mirror and Glass Materials
+
+
+
+Below we rendered the CBspheres.dae with 64 samples per pixel, 4 samples per light, and different levels of max_ray_depth.
+
+::: {layout-ncol=2}
+
+![max_ray_depth = 0](./CBspheres_0.png)
+
+![max_ray_depth = 1](./CBspheres_1.png)
+
+:::
+
+When max_ray_depth = 0, only the light source will be visible since lighting up other parts requires at least one bounce.
+
+When max_ray_depth = 1, we see only see direct lighting. The two spheres are mostly dark except in the small areas where the reflection of the light source took place.
+
+
+::: {layout-ncol=2}
+
+![max_ray_depth = 2](./CBspheres_2.png)
+
+![max_ray_depth = 3](./CBspheres_3.png)
+
+:::
+
+When max_ray_depth = 2, we can clearly observe the mirror sphere because it took two bounces for the light to hit the sphere and hit the box.
+
+When max_ray_depth = 3, we can clearly observe the glass sphere as well because it took three bounces for the light to enter the sphere, exit the sphere, and hit the box.
+
+
+
+
+::: {layout-ncol=3}
+
+![max_ray_depth = 4](./CBspheres_4.png)
+
+![max_ray_depth = 5](./CBspheres_5.png)
+
+![max_ray_depth = 100](./CBspheres_100.png)
+
+:::
+
+
+
+For max_ray_depth = 4/5, the only noticeable difference is the glass sphere got more noise in it and this is because as more bounces occur, the glass sphere’s noise level will get closer and closer to its surrounding noise level. 
+
+When max_ray_depth = 100, everything has converged, and there's no noticeable difference.
+
+## Part 2
+
+### Varying Alpha
+
+Here we render ``CBdragon_microfacet_au.dae`` with $\alpha$ set to 0.005, 0.05,
+0.25, and 0.5. For each, we take 256 samples per pixel, 4 samples per light, and 
+maintain a ray depth of 7. 
+
+::: {layout-ncol=2}
+![$\alpha = 0.5$](./img/dragon_alpha_0-5.png)
+
+![$\alpha = 0.25$](./img/dragon_alpha_0-25.png)
+
+![$\alpha = 0.05$](./img/dragon_alpha_0-05.png)
+
+![$\alpha = 0.005$](./img/dragon_alpha_0-005.png)
+
+:::
+
+We can observe that as $\alpha$ decreases, the material becomes "shinier" (or
+glossier/specular) and becomes more reflective of its surroundings. At $\alpha =
+0.5$, we faintly see the influence of the red wall on the throat of the dragon
+(and likewise we faintly see the blue influence on its tail), but it is
+otherwise a matte golden.  At $\alpha = 0.25$, these influences become more
+apparent, and by $\alpha = 0.05$, it is reflective to the point of being
+comparable to a mirror. We also note that at this point there exists a side
+effect of many white points across the image. These are most severe at $\alpha =
+0.005$.
+
+### Comparison with Cosine Hemisphere Sampling
+
+Here we compare our implementation of Importance Sampling with the provided
+implementation of Cosine Hemisphere Sampling. For each, we take 64 samples 
+per pixel, 1 sample per light, and maintain a ray depth of 7.
+
+::: {layout-ncol=2}
+
+![Importance Sampling](./img/bunny_importance_sampling.png)
+
+![Cosine Hemisphere Sampling](./img/bunny_cos_sampling.png)
+
+:::
+
+We can observe that the room itself is quite similar in both images as the walls
+and floor both converge quickly. However, in the details of the bunny we see
+that the details in Cosine Hemisphere Sampling are poorly approximated, with
+many excessively dark regions (e.g., the further ear) and an abundance of
+blackpoints throughout the body.
+
+### Additional Materials
+
+Here we present ``CBdragon_microfacet_au.dae`` with alternate materials, obtained 
+by modifying the $\eta$ and $k$ values in the file. These values were obtained 
+from the following site: <https://refractiveindex.info>. For each rendering, 
+we take 256 samples per pixel, 4 samples per light, and maintain a ray depth of 7.
+
+![Zinc ($\eta = \{ 1.1181, 0.92678, 0.71515 \}$, $k = \{ 5.5577, 4.9657, 4.1696 \}$)](./img/dragon_material_zinc.png)
+
+![Franckeite ($\eta = \{ 3.4982, 3.4147, 2.5670 \}$, $k = \{ 0.47698, 0.84051, 1.3236\}$)](./img/dragon_material_franckeite.png)
