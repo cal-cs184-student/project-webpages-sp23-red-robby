@@ -1,7 +1,678 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 4 here
-	</body>
-</html>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.2.313">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Isolde Fang, Jakob Sorensen">
+
+<title>Project 4: Cloth Simulator</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1.6em;
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="index_files/libs/clipboard/clipboard.min.js"></script>
+<script src="index_files/libs/quarto-html/quarto.js"></script>
+<script src="index_files/libs/quarto-html/popper.min.js"></script>
+<script src="index_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="index_files/libs/quarto-html/anchor.min.js"></script>
+<link href="index_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="index_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="index_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="index_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="index_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+</head>
+
+<body class="fullcontent">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Project 4: Cloth Simulator</h1>
+<p class="subtitle lead">CS 184: Computer Graphics and Imaging, Spring 2023</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Isolde Fang, Jakob Sorensen </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="overview" class="level2">
+<h2 class="anchored" data-anchor-id="overview">Overview</h2>
+<p>In this project, we implemented real-time simulation of cloth using the mass-spring system taught in lecture. We also write shaders to create interesting materials on the simulated cloth. The result was satisfying, seeing the cloth come to life.</p>
+</section>
+<section id="part-1-part-i-masses-and-springs" class="level2">
+<h2 class="anchored" data-anchor-id="part-1-part-i-masses-and-springs">Part 1: Part I: Masses and springs</h2>
+<p>In this part, we will build a mass-sprig system to model deformable objects. Specifically, given a sheet of cloth with some desired dimensions and parameters, we will divide it into evenly spaced grids of point masses, and connect nearby masses with different types of springs.</p>
+<p>To implement this, in <code>Cloth::buildGrid</code>, we first find the appropriate steps for each row and column based on <code>width</code>, <code>height</code>, <code>num_width_points</code> and <code>num_height_points</code>, and iterate through the nested for loop to populate <code>point_masses</code>.</p>
+<p>We then iterate through the nested for loop again to populate <code>springs</code>. Specifically, we add three types of springs listed below:</p>
+<ul>
+<li><p>we add structural constraints to a point mass and the point mass to its left as well as the point mass above it.</p></li>
+<li><p>we add shearing constraints to a point mass and the point mass to its diagonal upper left as well as the point mass to its diagonal upper right.</p></li>
+<li><p>we add bending constraints to a point mass and the point mass two away to its left as well as the point mass two above it.</p></li>
+</ul>
+<p>Below are some screenshots of <code>scene/pinned2.json</code> from different viewing angles where we can clearly see the cloth wireframe to show the structure of the point masses and springs.</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="./1-1.png" class="img-fluid"></p>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<p><img src="./1-3.png" class="img-fluid"></p>
+</div>
+</div>
+</div>
+<p>Below we show what the wireframe looks like (1) without any shearing constraints, (2) with only shearing constraints, and (3) with all constraints.</p>
+<p><img src="./1-4.png" class="img-fluid" style="width:75.0%"></p>
+<p><img src="./1-5.png" class="img-fluid" style="width:75.0%"></p>
+<p><img src="./1-6.png" class="img-fluid" style="width:75.0%"></p>
+</section>
+<section id="part-2-simulation-via-numerical-integration" class="level2">
+<h2 class="anchored" data-anchor-id="part-2-simulation-via-numerical-integration">Part 2: Simulation via numerical integration</h2>
+<p>After implementing the system of masses and springs, we need to apply forces on our cloth’s point messes so that we can see how they move as time progresses.</p>
+<p>There are two types of forces we need to apply to each point mass: external forces based on <code>external_acceleration</code> and the <code>mass</code>, and spring correction forces.</p>
+<p>For external forces, we will the formula <code>F = m * a</code>(Newton’s 2nd Law) and apply it to each point mass. For spring correction forces, we use Hooke’s law:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-f1.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 10</figcaption><p></p>
+</figure>
+</div>
+<p>and apply this force to one point mass and the opposite force to the other point mass.</p>
+<p>After we have the force acting on each point mass at this time step, we need to compute each point mass’s new position. We used the Verlet integration algorithm in this case based on the formula below to update the new position:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-f2.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 10</figcaption><p></p>
+</figure>
+</div>
+<p>Eventually, we add constrains on the position updates so that we won’t get an unreasonably deformed cloth. More specially, for each spring if a spring’s length is more than 10% grater than its <code>rest_length</code>, then we will correct the two end points of the spring so that it will be exactly 10% greater than its <code>rest_length</code>. The way to correct differs based on whether the two end points are pinned or not.</p>
+<p>Now we compare how the parameter spring constant ks affects the final results. Below are the final resting views of <code>scene/pinned2.json</code> with different values for the spring constant <code>ks</code>:</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-10.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 10</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-100.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 100</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-1000.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 1000</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-5000.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 5000(default)</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 20.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-10000.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 10000</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>When the spring constant ks is very low, the cloth looks very loose and tends to deform due to its weight. When the spring constant ks is very high, the cloth looks very stiff, and that’s less prone to deform due to its weight.</p>
+<p>Now we compare how the density parameter affects the final results. Below are the final resting views of scene/pinned2.json with different values for the parameter density:</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d5.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">density = 5</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d15.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">density = 15(default)</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d30.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">density = 30</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d100.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">density = 100</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>When the density is low, it looks like the cloth is really light and could be blown away easily. As the density increases, we can see the weight of the cloth starts to increase, which can be demonstrated by the folds on the cloth.</p>
+<p>Now we compare how the damping parameter affects the final results. Below are the final resting views of <code>scene/pinned2.json</code> with different values for the parameter damping:</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d0.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">damping = 0.0%</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d0.2.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">damping = 0.2%(default)</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d0.4.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">damping = 0.4%</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 25.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./2-d0.8.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">damping = 0.08%</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>The damping parameter doesn’t affect the final results but will affect how the cloth comes to its resting position. When damping is low, the cloth is prone to oscillate more before coming to its resting position and creates more ripples. When the damping parameter is high, it’s less prone to continue oscillating.</p>
+<p>Below is the final result of <code>scene/pinned4.json</code> in its final resting state!</p>
+<p><img src="./2-final.png" class="img-fluid"></p>
+</section>
+<section id="part-3-handling-collisions-with-other-objects" class="level2">
+<h2 class="anchored" data-anchor-id="part-3-handling-collisions-with-other-objects">Part 3: Handling collisions with other objects</h2>
+<p>Now we want to see how the cloth interacts with a sphere and a plane when it collides with them.</p>
+<p>In <code>Sphere::collide</code>, we will adjust a point mass’s position if it intersects with or is inside the sphere by “bumping” it up to the surface of the sphere. Specifically, we compute the tangent point by connecting the origin of the sphere and the point mass’s <code>position</code>, which is used to find the correction vector and apply it to the <code>last_position</code>. Then we get the new position by applying the correction vector to the <code>last_position</code> and scaling down by <code>(1-f)</code> where f is friction.</p>
+<p>In <code>Plane::collide</code>, if a point mass moves from one side of the plane to the other in the last time step, we “bump” it back to the side where it’s coming from.</p>
+<p>Then in <code>Cloth::simulate</code>, we add a for loop to iterate through every point mass and check call collide on every possible <code>CollisionObject</code> on that point mass.</p>
+<p>Below are some screenshots of the shaded cloth from <code>scene/sphere.json</code> in its final resting state on the sphere using the default <code>ks = 5000</code> as well as with <code>ks = 500</code> and <code>ks = 50000</code>.</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./3-500.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 500</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./3-5000.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 5000(default)</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 33.3%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./3-50000.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">ks = 50000</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>As mentioned in part 2, <code>ks</code> represent the stiffness of the cloth. As we can see, when the <code>ks</code> is low, the cloth drapes around the sphere. When the <code>ks</code> is high, the cloth remains more of its own shape and looks more rigid compared to the one with low <code>ks</code> parameter.</p>
+<p>Below is the shaded cloth from <code>scene/plane.json</code> in its final resting state on the plane.</p>
+<p><img src="./3-plane.png" class="img-fluid"></p>
+</section>
+<section id="part-4-handling-self-collisions" class="level2">
+<h2 class="anchored" data-anchor-id="part-4-handling-self-collisions">Part 4: Handling self-collisions</h2>
+<p>Below we provide a sequence of images demonstrating the cloth falling down, colliding with itself, and coming to a resting state.</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-1.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Image 1</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-2.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Image 2</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-3.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Image 3</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-4.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Image 4</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>Increasing the density caused the cloth to fall directly down on top of itself to a greater extent. This can be seen in the image below, with the cloth in a resting state that is less spread out than the last when the density value is set to 100. By constrast, with lower density, the cloth becomes less stable and moves more dramatically when making contact with itself. At very low density, it becomes completely unstable and moves as if it was struck by wind. The image below shows it moving in a less predictable way at density value of 4.</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-low-density.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Density value at 4</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-high-density.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Density value at 100</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>When playing with the <code>ks</code> value, we observe that at lower values, more folds form in the cloth, while at higher values, there are less folds and we observe only gentle folding.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-high-ks.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption"><code>ks</code> at 10,000</figcaption><p></p>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./4-low-ks.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption"><code>ks</code> at 20</figcaption><p></p>
+</figure>
+</div>
+</section>
+<section id="part-5-shaders" class="level2">
+<h2 class="anchored" data-anchor-id="part-5-shaders">Part 5: Shaders</h2>
+<p>Shaders are programs ran on the GPU with the purpose of modifying vertices or pixels in a renderered image. In this case, we are rendering with OpenGL so use the shading language GLSL (OpenGL Shading Language). It provides high level access to the graphics pipeline. We write two types of shaders in this project – <em>fragment</em> shaders and <em>vertex</em> shaders. The former operates on pixels while the latter on the vertices of the scene. The results of the vertex shader are further processed by the graphics pipeline, then passed to the fragment shader, which colors the pixels. We utilize both of these to efficiently render interesting materials on the GPU.</p>
+<section id="blinn-phong-shader" class="level4">
+<h4 class="anchored" data-anchor-id="blinn-phong-shader">Blinn-Phong Shader</h4>
+<p>The Blinn-Phone shading model provides us with a means of realistically simulating the appearance of lighting on surfaces. It works by dividing the light effects into three categories–ambience, diffuse, and specular.</p>
+<ul>
+<li><em>Ambient</em> lighting represents the light that exists uniformly throughout the scene. It shoots in all directions and has the same effect on all surfaces. It can be thought of informally as the <em>minimum</em> light existing in the scene. We calculate it by multiplying the light intensity (a value of our choosing) by the ambient light color. The latter value is just white in our case.</li>
+<li><em>Diffuse</em> lighting represents the light scattered uniformly in all directions by surfaces. The amount of light reflected is dependent on the angle between the surface’s normal and light direction (which are inversely related).</li>
+<li><em>Specular</em> lighting represents highlights (the shine) on a surface and improves the realism of the image significantly. It is dependent on the halfway vector and the view direction. The amount of shininess is controlled via the specular component (<span class="math inline">\(p\)</span> in the assignment specification). We settled on 100 for this value.</li>
+</ul>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-phong-ambience.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">With only ambience</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-phong-diffuse.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">With only diffuse</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-phong-specular.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">With only specular</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-phong.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Entire model</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+<section id="texture-mapping-shader" class="level4">
+<h4 class="anchored" data-anchor-id="texture-mapping-shader">Texture Mapping Shader</h4>
+<p>Below is a demonstration of the texture shader using a forged iron metal texture (<a href="https://everytexture.com/everytexture-com-stock-metal-texture-00014/">source</a>).</p>
+<p><img src="./5-texture.png" class="img-fluid" style="width:50.0%"></p>
+</section>
+<section id="bump-and-displacement-mapping-shaders" class="level4">
+<h4 class="anchored" data-anchor-id="bump-and-displacement-mapping-shaders">Bump and Displacement Mapping Shaders</h4>
+<p>Below we demonstrate the bump and displacement mapping shaders using a custom wood texture (<a href="https://everytexture.com/everytexture-com-stock-wood-texture-00009/">source</a>). We see that the displacement mapping shader attempts to give a 3D effect to the wood, though its success is moderate at best, with the shapes created being too sharp and jagged to plausibly be wood bark. This makes sense as the approximation in the shaders’ <code>h</code> used is simply the <code>R</code> value (as in <code>RGB</code>) from the texture. It was necessary to fiddle with the <strong>Height</strong> and <strong>Normal</strong> parameters in the GUI to create an acceptable image. That is, given acceptable parameters for the bump mapping, a direct conversion to displacement mapping produced 3D effects far too exaggerated.</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-bump-sphere.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Sphere with bump mapping</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-displacement-sphere.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Sphere with displacement</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-bump-cloth.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Cloth falling with bump mapping</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-bump-cloth-sphere.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Cloth with bump mapping</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>Below we modify the sphere’s coarseness and compare. The bump mapping has parameters (<em>Normal</em>: 120, <em>Height</em>: 0.02) and the displacement mapping has parameters (<em>Normal</em>: 120, <em>Height</em> 0.01) – see above for why they differ.</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-bump-128.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Bump mapping with <code>-o 128 -a 128</code></figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-displace-128.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Displacement mapping with <code>-o 128 -a 128</code></figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-bump-16.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Bump mapping with <code>-o 16 -a 16</code></figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-displace-16.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Displacement mapping with <code>-o 16 -a 16</code></figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+<p>We can see that the size of the 3D effects become much larger when the coarseness of the sphere increases, though the effect is perhaps subtle. Increasing the height parameter to 0.05 for the displacement mapping rendering makes it obvious to the point of looking absurd:</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-displace-005.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Displacement mappingwith <code>-o 16 -a 16</code> and Height at 0.05</figcaption><p></p>
+</figure>
+</div>
+</section>
+<section id="mirror-shader" class="level4">
+<h4 class="anchored" data-anchor-id="mirror-shader">Mirror Shader</h4>
+<p>Below we share the results of the mirror shader applied to the sphere and cloth.</p>
+<div class="quarto-layout-panel">
+<div class="quarto-layout-row quarto-layout-valign-top">
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-mirror-sphere.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">Sphere</figcaption><p></p>
+</figure>
+</div>
+</div>
+<div class="quarto-layout-cell" style="flex-basis: 50.0%;justify-content: center;">
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="./5-mirror-cloth.png" class="img-fluid figure-img"></p>
+<p></p><figcaption class="figure-caption">With Cloth</figcaption><p></p>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="collaboration" class="level2">
+<h2 class="anchored" data-anchor-id="collaboration">Collaboration</h2>
+<p>We collaborated remotely. It was difficult as one member had a severe concussion.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>
